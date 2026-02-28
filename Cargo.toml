@@ -1,0 +1,13 @@
+[package]
+name = "consys"
+version = "0.1.4"
+edition = "2021"
+description = "Concise system information."
+license = "MIT"
+repository = "https://github.com/Nate-Rich/consys"
+
+[[bin]]
+name = "consys"
+path = "src/main.rs"
+
+[dependencies]
