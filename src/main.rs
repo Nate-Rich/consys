@@ -12,6 +12,16 @@ fn os() -> String {
     "unknown".to_string()
 }
 
+fn host() -> String {
+    let name = fs::read_to_string("/sys/devices/virtual/dmi/id/product_name")
+        .unwrap_or_default().trim().to_string();
+    let version = fs::read_to_string("/sys/devices/virtual/dmi/id/product_version")
+        .unwrap_or_default().trim().to_string();
+    if name.is_empty() { return "unknown".to_string(); }
+    if version.is_empty() || version == name { return name; }
+    format!("{} {}", name, version)
+}
+
 fn kernel() -> String {
     fs::read_to_string("/proc/version")
         .unwrap_or_default()
@@ -19,6 +29,10 @@ fn kernel() -> String {
         .nth(2)
         .unwrap_or("unknown")
         .to_string()
+}
+
+fn shell() -> String {
+    std::env::var("SHELL").unwrap_or_else(|_| "unknown".to_string())
 }
 
 fn cpu() -> String {
@@ -93,6 +107,12 @@ fn pkgs_dpkg() -> usize {
     content.lines().filter(|l| l.starts_with("Package:")).count()
 }
 
+fn pkgs_pacman() -> usize {
+    fs::read_dir("/var/lib/pacman/local/")
+        .map(|d| d.count())
+        .unwrap_or(0)
+}
+
 fn pkgs_flatpak() -> usize {
     let sys = fs::read_dir("/var/lib/flatpak/app/")
         .map(|d| d.count())
@@ -105,15 +125,28 @@ fn pkgs_flatpak() -> usize {
     sys + user
 }
 
+fn pkgs_snap() -> usize {
+    fs::read_dir("/var/lib/snapd/snaps/")
+        .map(|d| d
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map(|x| x == "snap").unwrap_or(false))
+            .count())
+        .unwrap_or(0)
+}
+
 fn packages() -> String {
-    let dpkg = pkgs_dpkg();
+    let dpkg    = pkgs_dpkg();
+    let pacman  = pkgs_pacman();
     let flatpak = pkgs_flatpak();
-    match (dpkg, flatpak) {
-        (0, 0) => "unknown".to_string(),
-        (d, 0) => format!("{} (dpkg)", d),
-        (0, f) => format!("{} (flatpak)", f),
-        (d, f) => format!("{} (dpkg), {} (flatpak)", d, f),
-    }
+    let snap    = pkgs_snap();
+
+    let mut parts = Vec::new();
+    if dpkg    > 0 { parts.push(format!("{} (dpkg)",    dpkg));    }
+    if pacman  > 0 { parts.push(format!("{} (pacman)",  pacman));  }
+    if flatpak > 0 { parts.push(format!("{} (flatpak)", flatpak)); }
+    if snap    > 0 { parts.push(format!("{} (snap)",    snap));    }
+
+    if parts.is_empty() { "unknown".to_string() } else { parts.join(", ") }
 }
 
 fn uptime() -> String {
@@ -137,11 +170,11 @@ fn help() {
     println!("  -d    disk");
     println!("  -u    uptime");
     println!("  -p    packages");
-    println!("  -f    fetchtime");
+    println!("  -t    time to fetch");
     println!("  -h    help");
     println!();
     println!("example:");
-    println!("  consys -g -d -u -p -f");
+    println!("  consys -g -d -u -p -t");
 }
 
 fn main() {
@@ -156,17 +189,19 @@ fn main() {
     let show_disk     = args.iter().any(|a| a == "-d");
     let show_uptime   = args.iter().any(|a| a == "-u");
     let show_packages = args.iter().any(|a| a == "-p");
-    let show_fetch    = args.iter().any(|a| a == "-f");
+    let show_time     = args.iter().any(|a| a == "-t");
 
     let start = Instant::now();
 
     println!("os:       {}", os());
+    println!("host:     {}", host());
     println!("kernel:   {}", kernel());
+    println!("shell:    {}", shell());
     println!("cpu:      {}", cpu());
     if show_gpu      { println!("gpu:      {}", gpu()); }
     if show_disk     { println!("disk:     {}", disk()); }
     println!("memory:   {}", memory());
     if show_packages { println!("pkgs:     {}", packages()); }
     if show_uptime   { println!("uptime:   {}", uptime()); }
-    if show_fetch    { println!("fetchtime:{:?}", start.elapsed()); }
+    if show_time     { println!("time:     {:?}", start.elapsed()); }
 }

@@ -3,10 +3,12 @@
 Concise system information. No logos, no fluff.
 
 ```
-os:     Ubuntu 24.04 LTS
-kernel: 6.8.0-101-generic
-cpu:    Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
-memory: 4821M / 15926M
+os:       Arch Linux
+host:     <machine model>
+kernel:   6.x.x-arch1-1
+shell:    /bin/bash
+cpu:      <processor model>
+memory:   xxxxM / xxxxM
 ```
 
 Written in Rust. Reads directly from `/proc` and `/sys` where possible — no unnecessary subprocesses.
@@ -15,15 +17,31 @@ Written in Rust. Reads directly from `/proc` and `/sys` where possible — no un
 
 ## Install
 
-### Option 1: Script (recommended)
+### Option 1: Secure (recommended)
+
+Download the install script, review it, then run it:
+
+```bash
+curl -o /tmp/install.sh https://raw.githubusercontent.com/Nate-Rich/consys/main/install.sh
+```
+
+Review: `cat /tmp/install.sh`
+
+```bash
+bash /tmp/install.sh
+```
+
+Verifies SHA256 checksum before installing. Aborts if verification fails.
+
+### Option 2: Quick
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/Nate-Rich/consys/main/install.sh)
 ```
 
-Detects your architecture, downloads the correct binary from releases, installs to `/usr/local/bin/consys`.
+Both options detect your architecture automatically and install to `/usr/local/bin/consys`.
 
-### Option 2: Manual binary
+### Option 3: Manual binary
 
 Download the correct binary for your architecture from [releases](https://github.com/Nate-Rich/consys/releases/latest):
 
@@ -38,7 +56,7 @@ sudo mv consys-* /usr/local/bin/consys
 sudo chmod +x /usr/local/bin/consys
 ```
 
-### Option 3: Build from source
+### Option 4: Build from source
 
 Requires [Rust](https://rustup.rs).
 
@@ -51,22 +69,46 @@ sudo cp target/release/consys /usr/local/bin/consys
 
 ---
 
-## Use
+## Usage
 
-consys - concise system information
+```
+consys [flags]
+```
 
-usage:  consys [flags]
+All flags are optional. With no flags, consys prints `os`, `kernel`, `cpu`, and `memory`.
 
-flags:
-  -g    gpu
-  -d    disk
-  -u    uptime
-  -p    packages
-  -f    fetchtime
-  -h    help
+| Flag | Field | Notes |
+|------|-------|-------|
+| `-g` | gpu | requires `lspci` (`pciutils`) |
+| `-d` | disk | root partition `/` only |
+| `-p` | pkgs | dpkg, pacman, flatpak, and/or snap |
+| `-u` | uptime | |
+| `-t` | time | time taken to fetch |
+| `-h` | help | |
 
-example:
-  consys -g -d -u -p -f
+### Output order
+
+When flags are supplied, output always follows this order regardless of how flags are passed:
+
+```
+os
+host
+kernel
+shell
+cpu
+gpu       (-g)
+disk      (-d)
+memory
+pkgs      (-p)
+uptime    (-u)
+time      (-t)
+```
+
+### Example
+
+```bash
+consys -g -d -p -u -t
+```
 
 ---
 
@@ -80,6 +122,7 @@ sudo rm /usr/local/bin/consys
 
 ## Notes
 
-- GPU detection requires `lspci` (part of `pci-utils`, standard on most Linux distros)
+- GPU detection requires `lspci`, part of `pciutils` — standard on most Linux distros
 - Disk usage reflects the root partition `/` only
+- Package count covers dpkg, pacman, flatpak, and snap where present
 - No configuration, no dependencies, no logos
