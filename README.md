@@ -75,16 +75,17 @@ sudo cp target/release/consys /usr/local/bin/consys
 consys [flags]
 ```
 
-All flags are optional. With no flags, consys prints `os`, `kernel`, `cpu`, and `memory`.
+All flags are optional. With no flags, consys prints os, host, kernel, shell, cpu, and memory.
 
 | Flag | Field | Notes |
 |------|-------|-------|
-| `-g` | gpu | requires `lspci` (`pciutils`) |
 | `-d` | disk | root partition `/` only |
+| `-g` | gpu | requires `lspci` (`pciutils`) |
 | `-p` | pkgs | dpkg, pacman, flatpak, and/or snap |
 | `-u` | uptime | |
 | `-t` | time | time taken to fetch |
-| `-h` | help | |
+| `--help` | help | |
+| `--version` | version | |
 
 ### Output order
 
@@ -96,9 +97,9 @@ host
 kernel
 shell
 cpu
-gpu       (-g)
-disk      (-d)
 memory
+disk      (-d)
+gpu       (-g)
 pkgs      (-p)
 uptime    (-u)
 time      (-t)

@@ -2,6 +2,8 @@ use std::fs;
 use std::process::Command;
 use std::time::Instant;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn os() -> String {
     let content = fs::read_to_string("/etc/os-release").unwrap_or_default();
     for line in content.lines() {
@@ -47,6 +49,36 @@ fn cpu() -> String {
     "unknown".to_string()
 }
 
+fn memory() -> String {
+    let content = fs::read_to_string("/proc/meminfo").unwrap_or_default();
+    let mut total_kb = 0u64;
+    let mut available_kb = 0u64;
+    for line in content.lines() {
+        if line.starts_with("MemTotal:") {
+            total_kb = line.split_whitespace().nth(1).unwrap_or("0").parse().unwrap_or(0);
+        } else if line.starts_with("MemAvailable:") {
+            available_kb = line.split_whitespace().nth(1).unwrap_or("0").parse().unwrap_or(0);
+        }
+    }
+    let used = (total_kb - available_kb) / 1024;
+    let total = total_kb / 1024;
+    format!("{}M / {}M", used, total)
+}
+
+fn disk() -> String {
+    let output = match Command::new("df").args(["-h", "/"]).output() {
+        Ok(o) => o,
+        Err(_) => return "unknown".to_string(),
+    };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().nth(1)
+        .and_then(|l| {
+            let p: Vec<&str> = l.split_whitespace().collect();
+            if p.len() >= 3 { Some(format!("{} / {}", p[2], p[1])) } else { None }
+        })
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 fn gpu() -> String {
     let output = match Command::new("lspci").output() {
         Ok(o) => o,
@@ -70,36 +102,6 @@ fn gpu() -> String {
         }
     }
     "unknown".to_string()
-}
-
-fn disk() -> String {
-    let output = match Command::new("df").args(["-h", "/"]).output() {
-        Ok(o) => o,
-        Err(_) => return "unknown".to_string(),
-    };
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    stdout.lines().nth(1)
-        .and_then(|l| {
-            let p: Vec<&str> = l.split_whitespace().collect();
-            if p.len() >= 3 { Some(format!("{} / {}", p[2], p[1])) } else { None }
-        })
-        .unwrap_or_else(|| "unknown".to_string())
-}
-
-fn memory() -> String {
-    let content = fs::read_to_string("/proc/meminfo").unwrap_or_default();
-    let mut total_kb = 0u64;
-    let mut available_kb = 0u64;
-    for line in content.lines() {
-        if line.starts_with("MemTotal:") {
-            total_kb = line.split_whitespace().nth(1).unwrap_or("0").parse().unwrap_or(0);
-        } else if line.starts_with("MemAvailable:") {
-            available_kb = line.split_whitespace().nth(1).unwrap_or("0").parse().unwrap_or(0);
-        }
-    }
-    let used = (total_kb - available_kb) / 1024;
-    let total = total_kb / 1024;
-    format!("{}M / {}M", used, total)
 }
 
 fn pkgs_dpkg() -> usize {
@@ -166,12 +168,13 @@ fn help() {
     println!("usage:  consys [flags]");
     println!();
     println!("flags:");
-    println!("  -g    gpu");
-    println!("  -d    disk");
-    println!("  -u    uptime");
-    println!("  -p    packages");
-    println!("  -t    time to fetch");
-    println!("  -h    help");
+    println!("  -d         disk");
+    println!("  -g         gpu");
+    println!("  -p         packages");
+    println!("  -u         uptime");
+    println!("  -t         time to fetch");
+    println!("  --help     help");
+    println!("  --version  version");
     println!();
     println!("example:");
     println!("  consys -g -d -u -p -t");
@@ -180,15 +183,20 @@ fn help() {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    if args.iter().any(|a| a == "-h" || a == "--help" || a == "help") {
+    if args.iter().any(|a| a == "--help") {
         help();
         return;
     }
 
-    let show_gpu      = args.iter().any(|a| a == "-g");
+    if args.iter().any(|a| a == "--version") {
+        println!("consys {}", VERSION);
+        return;
+    }
+
     let show_disk     = args.iter().any(|a| a == "-d");
-    let show_uptime   = args.iter().any(|a| a == "-u");
+    let show_gpu      = args.iter().any(|a| a == "-g");
     let show_packages = args.iter().any(|a| a == "-p");
+    let show_uptime   = args.iter().any(|a| a == "-u");
     let show_time     = args.iter().any(|a| a == "-t");
 
     let start = Instant::now();
@@ -198,9 +206,9 @@ fn main() {
     println!("kernel:   {}", kernel());
     println!("shell:    {}", shell());
     println!("cpu:      {}", cpu());
-    if show_gpu      { println!("gpu:      {}", gpu()); }
-    if show_disk     { println!("disk:     {}", disk()); }
     println!("memory:   {}", memory());
+    if show_disk     { println!("disk:     {}", disk()); }
+    if show_gpu      { println!("gpu:      {}", gpu()); }
     if show_packages { println!("pkgs:     {}", packages()); }
     if show_uptime   { println!("uptime:   {}", uptime()); }
     if show_time     { println!("time:     {:?}", start.elapsed()); }
