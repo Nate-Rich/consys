@@ -1,1 +1,7 @@
 target/
+__pycache__/
+*.py[cod]
+bench-output/
+bench-*.json
+bench-*.md
+RELEASE.md

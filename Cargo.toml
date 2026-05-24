@@ -1,6 +1,6 @@
 [package]
 name = "consys"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 description = "Concise system information."
 license = "MIT"
@@ -11,3 +11,14 @@ name = "consys"
 path = "src/main.rs"
 
 [dependencies]
+# libc: typed FFI struct definitions for the platform we already link against.
+# Maintained by rust-lang itself, zero transitive deps. Required for correct
+# statvfs64/tm layouts across x86_64, aarch64, and armv7 targets.
+libc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = "fat"           # whole-program inlining; helps the FFI calls and writeln! macros most
+codegen-units = 1     # forces the optimizer to see everything; slower build, faster binary
+strip = true          # smaller binary, faster page-in
+panic = "abort"       # removes unwind tables; smaller binary, faster startup
