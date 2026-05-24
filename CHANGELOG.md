@@ -4,7 +4,7 @@ All notable changes to consys are documented here.
 
 ---
 
-## v1.1.0 — unreleased
+## v1.1.0 — 2026-05-24
 
 v1.1.0 tightens consys around its core contract: small, stable, parseable system context with less subprocess overhead and clearer behavior for scripts.
 
