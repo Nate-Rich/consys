@@ -5,3 +5,4 @@ bench-output/
 bench-*.json
 bench-*.md
 RELEASE.md
+.hermes/
